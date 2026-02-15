@@ -1,120 +1,192 @@
-.control-panel {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    background: rgba(0, 0, 0, 0.8);
-    padding: 20px;
-    border-radius: 12px;
-    color: white;
-    width: 200px;
-    z-index: 100;
+:root {
+    --primary: #00FF00;
+    --primary-glow: rgba(0, 255, 0, 0.5);
+    --bg-dark: #0a0a0b;
+    --glass-bg: rgba(255, 255, 255, 0.05);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --text-main: #e0e0e0;
+    --text-dim: #a0a0a0;
+    --danger: #ff4444;
+    --secondary: #333333;
 }
 
-.control-group {
-    margin-bottom: 20px;
+.control-panel.glassmorphism {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 280px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    padding: 24px;
+    color: var(--text-main);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+}
+
+.panel-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    letter-spacing: -0.5px;
+    font-weight: 700;
+}
+
+.panel-header span {
+    color: var(--primary);
+    text-shadow: 0 0 10px var(--primary-glow);
 }
 
 .control-group h3 {
-    margin: 0 0 10px 0;
-    font-size: 14px;
+    font-size: 0.85rem;
     text-transform: uppercase;
-    color: #aaa;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+    font-weight: 600;
 }
 
-.control-group button {
-    display: block;
-    width: 100%;
+.toggle-buttons,
+.tool-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 4px;
+    border-radius: 10px;
+}
+
+.toggle-buttons button,
+.tool-buttons button {
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
     padding: 8px;
-    margin-bottom: 5px;
-    background: #333;
-    border: 1px solid #444;
-    color: white;
+    border-radius: 8px;
     cursor: pointer;
-    border-radius: 4px;
-    transition: all 0.2s;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
 }
 
-.control-group button:hover {
-    background: #444;
-}
-
-.control-group button.active {
-    background: #007bff;
-    border-color: #0056b3;
-}
-
-.control-group button.danger {
-    background: #dc3545;
-    border-color: #bd2130;
-}
-
-.control-group button.danger:hover {
-    background: #c82333;
-}
-
-.control-group button.success {
-    background: #28a745;
-    border-color: #218838;
-}
-
-.control-group button.success:hover {
-    background: #218838;
+.toggle-buttons button.active,
+.tool-buttons button.active {
+    background: var(--glass-bg);
+    color: var(--primary);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
 .color-picker {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
     gap: 8px;
 }
 
 .color-swatch {
-    width: 24px;
-    height: 24px;
+    aspect-ratio: 1;
     border-radius: 50%;
     cursor: pointer;
     border: 2px solid transparent;
+    transition: transform 0.2s ease;
 }
 
-.color-swatch.active {
-    border-color: white;
+.color-swatch:hover {
     transform: scale(1.1);
 }
 
-.control-group input[type="range"] {
-    width: 100%;
+.color-swatch.active {
+    border-color: #fff;
+    box-shadow: 0 0 10px currentColor;
 }
 
-.loading-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: #1a1a1a;
+.size-control {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.size-control input[type="range"] {
+    flex: 1;
+    accent-color: var(--primary);
+}
+
+.size-value {
+    font-size: 0.85rem;
+    min-width: 40px;
+    text-align: right;
+}
+
+.checkbox-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: var(--text-main);
+    margin-top: 8px;
+}
+
+.checkbox-container input {
+    accent-color: var(--primary);
+    width: 16px;
+    height: 16px;
+}
+
+.action-buttons {
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    z-index: 200;
-    color: white;
+    gap: 10px;
+    margin-top: 10px;
 }
 
-.spinner {
-    width: 50px;
-    height: 50px;
-    border: 5px solid #333;
-    border-top: 5px solid #007bff;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin-bottom: 20px;
+.action-buttons button {
+    padding: 12px;
+    border-radius: 12px;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s ease;
 }
 
-@keyframes spin {
-    0% {
-        transform: rotate(0deg);
-    }
+.btn-primary {
+    background: var(--primary);
+    color: #000;
+}
 
-    100% {
-        transform: rotate(360deg);
-    }
+.btn-primary:hover {
+    filter: brightness(1.2);
+    box-shadow: 0 0 15px var(--primary-glow);
+}
+
+.btn-secondary {
+    background: var(--secondary);
+    color: #fff;
+}
+
+.btn-danger {
+    background: rgba(255, 68, 68, 0.1);
+    color: var(--danger);
+    border: 1px solid rgba(255, 68, 68, 0.2) !important;
+}
+
+.btn-danger:hover {
+    background: var(--danger);
+    color: #fff;
+}
+
+.btn-success {
+    background: rgba(0, 255, 127, 0.1);
+    color: #00ff7f;
+    border: 1px solid rgba(0, 255, 127, 0.2) !important;
+}
+
+.btn-success:hover {
+    background: #00ff7f;
+    color: #000;
 }
