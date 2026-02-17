@@ -22,13 +22,38 @@ const HandCanvas = () => {
     const [viewMode, setViewMode] = useState('2d'); // '2d' | '3d'
     const [isNeon, setIsNeon] = useState(true);
     const [showGrid, setShowGrid] = useState(true);
+    const [autoRotate, setAutoRotate] = useState(false);
     const scene3DRef = useRef();
+
+    // Smoothed Landmarks state
+    const smoothedPos = useRef({ x: 0.5, y: 0.5, z: 0.5 });
+    const smoothingAlpha = 0.4; // 0 to 1, lower = smoother
+
+    // Gesture Cooldown
+    const gestureCooldown = useRef(0);
 
     const handleExport3D = () => {
         if (scene3DRef.current) {
             scene3DRef.current.exportScene();
         }
     };
+
+    // Keyboard Shortcuts
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.ctrlKey && e.key === 'z') {
+                e.preventDefault();
+                undo();
+            } else if (e.ctrlKey && e.key === 's') {
+                e.preventDefault();
+                if (viewMode === '3d') handleExport3D();
+                else saveImage();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [viewMode, lines3D, activeLine3D]);
+
 
     // Drawing State
     const [isDrawing, setIsDrawing] = useState(false);
@@ -134,32 +159,42 @@ const HandCanvas = () => {
             const indexTip = landmarks[8];
             const thumbTip = landmarks[4];
 
-            // Coordinates
-            const x = indexTip.x * width;
-            const y = indexTip.y * height;
+            // Smoothing logic for drawing point
+            smoothedPos.current.x = smoothedPos.current.x * (1 - smoothingAlpha) + indexTip.x * smoothingAlpha;
+            smoothedPos.current.y = smoothedPos.current.y * (1 - smoothingAlpha) + indexTip.y * smoothingAlpha;
+            smoothedPos.current.z = smoothedPos.current.z * (1 - smoothingAlpha) + indexTip.z * smoothingAlpha;
 
-            // Calculate dynamic brush size based on depth (z-coordinate)
+            const x = smoothedPos.current.x * width;
+            const y = smoothedPos.current.y * height;
+
+            // Calculate dynamic brush size
             let currentBrushSize = brushSize;
-
             if (activeTool === 'freehand' && isDynamicSize) {
                 const wrist = landmarks[0];
                 const middleMCP = landmarks[9];
-                // Distance in normalized coordinates (0-1)
                 const handSize = Math.sqrt(Math.pow(wrist.x - middleMCP.x, 2) + Math.pow(wrist.y - middleMCP.y, 2));
-                // Map handSize to brush size. 
-                const minSize = 2;
-                const maxSize = 30;
-                const minHand = 0.05;
-                const maxHand = 0.25;
-
+                const minSize = 2, maxSize = 30, minHand = 0.05, maxHand = 0.25;
                 const ratio = (handSize - minHand) / (maxHand - minHand);
-                const clampedRatio = Math.max(0, Math.min(1, ratio));
-                currentBrushSize = minSize + clampedRatio * (maxSize - minSize);
+                currentBrushSize = minSize + Math.max(0, Math.min(1, ratio)) * (maxSize - minSize);
             }
 
             // Pinch Detection
             const pinchDist = Math.sqrt(Math.pow(indexTip.x - thumbTip.x, 2) + Math.pow(indexTip.y - thumbTip.y, 2));
-            const isPinching = pinchDist < 0.08; // Adjusted threshold
+            const isPinching = pinchDist < 0.08;
+
+            // Gesture: Fist for Undo (Distance between all fingers and wrist is small)
+            // Simplified: Distance between tip 8 and 12 and 16 and 20 to palm
+            const isFist = [8, 12, 16, 20].every(tipIdx => {
+                const tip = landmarks[tipIdx];
+                const palm = landmarks[0];
+                const dist = Math.sqrt(Math.pow(tip.x - palm.x, 2) + Math.pow(tip.y - palm.y, 2));
+                return dist < 0.12;
+            });
+
+            if (isFist && Date.now() - gestureCooldown.current > 1000) {
+                undo();
+                gestureCooldown.current = Date.now();
+            }
 
             if (isPinching) {
                 if (!isDrawing) {
@@ -168,19 +203,18 @@ const HandCanvas = () => {
                     currentPathRef.current = [{ x, y }];
 
                     if (viewMode === '3d') {
-                        // Map 0-1 to something like -10 to 10 for 3D
-                        const z = (1 - indexTip.z) * 10 - 5; // z-axis depth
-                        const x3d = (indexTip.x - 0.5) * 20;
-                        const y3d = (0.5 - indexTip.y) * 20;
+                        const z = (1 - smoothedPos.current.z) * 10 - 5;
+                        const x3d = (smoothedPos.current.x - 0.5) * 20;
+                        const y3d = (0.5 - smoothedPos.current.y) * 20;
                         setActiveLine3D([{ x: x3d, y: y3d, z }]);
                     } else {
                         saveHistory();
                     }
                 } else {
                     if (viewMode === '3d') {
-                        const z = (1 - indexTip.z) * 10 - 5;
-                        const x3d = (indexTip.x - 0.5) * 20;
-                        const y3d = (0.5 - indexTip.y) * 20;
+                        const z = (1 - smoothedPos.current.z) * 10 - 5;
+                        const x3d = (smoothedPos.current.x - 0.5) * 20;
+                        const y3d = (0.5 - smoothedPos.current.y) * 20;
                         setActiveLine3D(prev => [...prev, { x: x3d, y: y3d, z }]);
                     } else {
                         if (activeTool === 'freehand') {
@@ -188,7 +222,17 @@ const HandCanvas = () => {
                                 drawLine(drawingCtx, lastPoint, { x, y }, brushColor, currentBrushSize);
                             }
                         } else if (activeTool === 'shape') {
-                            // ... existing shape logic
+                            ctx.beginPath();
+                            ctx.strokeStyle = brushColor;
+                            ctx.lineWidth = brushSize;
+                            if (currentPathRef.current.length > 0) {
+                                const start = currentPathRef.current[0];
+                                ctx.moveTo(start.x, start.y);
+                                for (let i = 1; i < currentPathRef.current.length; i++) {
+                                    ctx.lineTo(currentPathRef.current[i].x, currentPathRef.current[i].y);
+                                }
+                                ctx.stroke();
+                            }
                         }
                     }
 
@@ -204,7 +248,26 @@ const HandCanvas = () => {
                         setLines3D(prev => [...prev, { points: activeLine3D, color: brushColor, size: brushSize }]);
                         setActiveLine3D([]);
                     } else if (activeTool === 'shape') {
-                        // ... existing shape logic
+                        const shape = detectShape(currentPathRef.current);
+                        if (shape) {
+                            drawingCtx.beginPath();
+                            drawingCtx.strokeStyle = brushColor;
+                            drawingCtx.lineWidth = brushSize;
+                            let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+                            for (const p of currentPathRef.current) {
+                                if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x;
+                                if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y;
+                            }
+                            const w = maxX - minX, h = maxY - minY;
+                            const cx = minX + w / 2, cy = minY + h / 2;
+                            if (shape === 'circle') drawingCtx.arc(cx, cy, Math.max(w, h) / 2, 0, 2 * Math.PI);
+                            else if (shape === 'rectangle') drawingCtx.strokeRect(minX, minY, w, h);
+                            else if (shape === 'line') {
+                                drawingCtx.moveTo(currentPathRef.current[0].x, currentPathRef.current[0].y);
+                                drawingCtx.lineTo(currentPathRef.current[currentPathRef.current.length - 1].x, currentPathRef.current[currentPathRef.current.length - 1].y);
+                            }
+                            drawingCtx.stroke();
+                        }
                     }
                     currentPathRef.current = [];
                 }
@@ -284,6 +347,8 @@ const HandCanvas = () => {
                 setIsNeon={setIsNeon}
                 showGrid={showGrid}
                 setShowGrid={setShowGrid}
+                autoRotate={autoRotate}
+                setAutoRotate={setAutoRotate}
                 export3D={handleExport3D}
             />
 
@@ -296,6 +361,7 @@ const HandCanvas = () => {
                     brushSize={brushSize}
                     isNeon={isNeon}
                     showGrid={showGrid}
+                    autoRotate={autoRotate}
                 />
             )}
         </div>

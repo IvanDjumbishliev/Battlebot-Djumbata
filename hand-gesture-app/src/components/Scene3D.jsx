@@ -35,7 +35,7 @@ const ActiveLine = ({ points, color, size }) => {
     );
 };
 
-const Scene3D = forwardRef(({ lines, activeLine, brushColor, brushSize, isNeon, showGrid }, ref) => {
+const Scene3D = forwardRef(({ lines, activeLine, brushColor, brushSize, isNeon, showGrid, autoRotate }, ref) => {
     const groupRef = useRef();
 
     useImperativeHandle(ref, () => ({
@@ -57,7 +57,14 @@ const Scene3D = forwardRef(({ lines, activeLine, brushColor, brushSize, isNeon, 
         <div className="scene-3d-container" style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}>
             <Canvas gl={{ toneMapping: THREE.NoToneMapping }}>
                 <PerspectiveCamera makeDefault position={[0, 0, 15]} />
-                <OrbitControls makeDefault enablePan={true} enableZoom={true} enableRotate={true} />
+                <OrbitControls
+                    makeDefault
+                    enablePan={true}
+                    enableZoom={true}
+                    enableRotate={true}
+                    autoRotate={autoRotate}
+                    autoRotateSpeed={2.0}
+                />
 
                 <ambientLight intensity={0.5} />
                 <pointLight position={[10, 10, 10]} />

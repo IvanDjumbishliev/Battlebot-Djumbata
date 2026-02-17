@@ -22,6 +22,8 @@ const ControlPanel = ({
     setIsNeon,
     showGrid,
     setShowGrid,
+    autoRotate,
+    setAutoRotate,
     export3D
 }) => {
 
@@ -132,6 +134,14 @@ const ControlPanel = ({
                                 onChange={(e) => setShowGrid(e.target.checked)}
                             />
                             <span>Show Grid</span>
+                        </label>
+                        <label className="checkbox-container">
+                            <input
+                                type="checkbox"
+                                checked={autoRotate}
+                                onChange={(e) => setAutoRotate(e.target.checked)}
+                            />
+                            <span>Auto-Rotate Scene</span>
                         </label>
                     </>
                 )}
